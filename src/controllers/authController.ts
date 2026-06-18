@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { adminAuth, adminDb } from '../config/FirebaseAdmin.js';
+import axios from 'axios';
 
 export const signUp = async (req: Request, res: Response) => {
   const { email, password, fullName } = req.body;
@@ -20,5 +21,53 @@ export const signUp = async (req: Request, res: Response) => {
     res.status(201).json({ message: "Admin registered successfully!" });
   } catch (error: any) {
     res.status(400).json({ message: error.message });
+  }
+};
+
+export const login = async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+
+  try {
+    const apiKey = process.env.FIREBASE_WEB_API_KEY;
+    const url = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`;
+
+    const response = await axios.post(url, {
+      email,
+      password,
+      returnSecureToken: true,
+    });
+
+    const { localId, idToken } = response.data;
+
+    const userDoc = await adminDb.collection('profiles').doc(localId).get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ message: "User profile not found in ERP" });
+    }
+
+    const userData = userDoc.data();
+
+    res.json({
+      message: "Login successful",
+      token: idToken,
+      user: {
+        uid: localId,
+        email: email,
+        fullName: userData?.fullName,
+        role: userData?.role
+      }
+    });
+
+  } catch (error: any) {
+    const firebaseError = error.response?.data?.error?.message || "SERVER_ERROR";
+    
+    let friendlyMessage = "An error occurred during login";
+    
+    if (firebaseError === "INVALID_PASSWORD") friendlyMessage = "The password you entered is incorrect.";
+    if (firebaseError === "EMAIL_NOT_FOUND") friendlyMessage = "No account found with this email.";
+    if (firebaseError === "USER_DISABLED") friendlyMessage = "This account has been disabled.";
+    if (firebaseError === "INVALID_LOGIN_CREDENTIALS") friendlyMessage = "Invalid email or password.";
+
+    res.status(401).json({ message: friendlyMessage });
   }
 };
