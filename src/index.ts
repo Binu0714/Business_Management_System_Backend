@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes.js';
 import repRoutes from './routes/repRoutes.js';
 import supplierRoutes from './routes/supplierRoutes.js';
+import purchaseRoutes from './routes/purchaseRoutes.js';
 
 dotenv.config();
 const app = express();
@@ -13,6 +14,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/reps', repRoutes);
 app.use('/api/suppliers', supplierRoutes);
+app.use('/api/purchases', purchaseRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ message: "BMS Backend is Live" });
