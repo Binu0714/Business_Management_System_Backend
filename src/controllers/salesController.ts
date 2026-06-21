@@ -94,11 +94,46 @@ export const updateSale = async (req: Request, res: Response) => {
 
 // 4. Delete Sale (DELETE)
 export const deleteSale = async (req: Request, res: Response) => {
+  const { id } = req.params; // The sale document ID
+
   try {
-    const { id } = req.params;
-    await adminDb.collection('sales').doc(id).delete();
-    res.json({ message: "Sales record deleted!" });
+    // Run the deletion and stock restoration as an Atomic Transaction
+    await adminDb.runTransaction(async (transaction) => {
+      const saleRef = adminDb.collection('sales').doc(id);
+      const saleDoc = await transaction.get(saleRef);
+
+      if (!saleDoc.exists) {
+        throw new Error("Sales record not found.");
+      }
+
+      const saleData = saleDoc.data();
+      const itemsToRestore = saleData?.items || [];
+
+      // Find the inventory document for each item and prepare the restoration
+      for (const item of itemsToRestore) {
+        const inventoryQuery = await adminDb.collection('inventory')
+          .where('itemId', '==', item.itemId)
+          .limit(1)
+          .get();
+
+        if (!inventoryQuery.empty) {
+          const inventoryDoc = inventoryQuery.docs[0];
+          const currentStock = inventoryDoc.data().stockQty || 0;
+
+          // RESTORE STOCK: Add the sold quantity back to the inventory
+          transaction.update(inventoryDoc.ref, {
+            stockQty: currentStock + item.qty
+          });
+        }
+      }
+
+      // Delete the actual sales record
+      transaction.delete(saleRef);
+    });
+
+    res.json({ message: "Sales record deleted and stock restored successfully!" });
   } catch (error: any) {
+    console.error("Failed to delete sale and restore stock:", error.message);
     res.status(500).json({ message: error.message });
   }
 };

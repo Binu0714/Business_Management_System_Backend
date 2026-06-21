@@ -20,12 +20,13 @@ export const savePurchase = async (req: Request, res: Response) => {
     for (const item of items) {
       await adminDb.collection('inventory').add({
         itemId: item.itemId,
-        itemName: item.itemName,
+        productName: item.itemName,
         price: item.price,
         sellingPrice: item.sellingPrice,
-        qty: item.qty,
-        batchNo: batchNo, 
-        expDate: expDate, 
+        originalQty: item.qty, // FIX: Save original quantity as a separate field
+        stockQty: item.qty,    // This is the one that will decrease during sales
+        batchNo: batchNo,
+        expDate: expDate,
         purchaseId: purchaseRef.id,
         createdAt: new Date().toISOString()
       });
@@ -77,10 +78,11 @@ export const updatePurchase = async (req: Request, res: Response) => {
     for (const item of items) {
       await adminDb.collection('inventory').add({
         itemId: item.itemId,
-        productName: item.itemName, 
+        productName: item.itemName,
         price: item.price,
         sellingPrice: item.sellingPrice,
-        stockQty: item.qty,
+        originalQty: item.qty, // FIX: Save original quantity as a separate field
+        stockQty: item.qty,    // This is the one that will decrease during sales
         batchNo: batchNo,
         expDate: expDate,
         purchaseId: id,
