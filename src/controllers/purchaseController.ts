@@ -98,21 +98,33 @@ export const updatePurchase = async (req: Request, res: Response) => {
 
 export const deletePurchase = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-
-    await adminDb.collection('purchases').doc(id).delete();
+    const { id } = req.params; 
 
     const inventorySnapshot = await adminDb.collection('inventory')
       .where('purchaseId', '==', id)
       .get();
 
+    for (const doc of inventorySnapshot.docs) {
+      const data = doc.data();
+      const currentStock = data.stockQty ?? 0;
+      const originalQty = data.originalQty ?? 0;
+
+      if (currentStock < originalQty) {
+        return res.status(400).json({ 
+          message: `Cannot delete purchase! Some units of '${data.productName}' have already been sold.` 
+        });
+      }
+    }
+
+    await adminDb.collection('purchases').doc(id).delete();
+
     const batch = adminDb.batch();
     inventorySnapshot.docs.forEach((doc) => {
       batch.delete(doc.ref);
     });
-    await batch.commit(); 
+    await batch.commit();
 
-    res.json({ message: "Purchase Order deleted and inventory cleaned up!" });
+    res.json({ message: "Purchase Order deleted and inventory cleaned up successfully!" });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
