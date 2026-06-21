@@ -71,3 +71,45 @@ export const login = async (req: Request, res: Response) => {
     res.status(401).json({ message: friendlyMessage });
   }
 };
+
+export const updateProfile = async (req: Request, res: Response) => {
+  const { uid } = req.params;
+  const { fullName, currentPassword, newPassword, email } = req.body;
+
+  try {
+    if (newPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ message: "Current password is required to set a new password." });
+      }
+
+      const apiKey = process.env.FIREBASE_WEB_API_KEY;
+      const url = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`;
+
+      try {
+        await axios.post(url, {
+          email,
+          password: currentPassword,
+          returnSecureToken: false,
+        });
+      } catch (authError) {
+        return res.status(401).json({ message: "The current password you entered is incorrect." });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "New password must be at least 6 characters." });
+      }
+      await adminAuth.updateUser(uid, { password: newPassword });
+    }
+
+    if (fullName) {
+      await adminDb.collection('profiles').doc(uid).update({
+        fullName,
+        updatedAt: new Date().toISOString()
+      });
+    }
+
+    res.json({ message: "Profile updated successfully!" });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
