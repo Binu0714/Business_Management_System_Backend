@@ -1,7 +1,6 @@
 import type { Request, Response } from 'express';
 import { adminDb } from '../config/FirebaseAdmin.js';
 
-// 1. Confirm and Save a New Purchase Order
 export const savePurchase = async (req: Request, res: Response) => {
   try {
     const { supplierId, supplierName, date, remarks, items, grandTotal, batchNo, expDate } = req.body;
@@ -10,8 +9,8 @@ export const savePurchase = async (req: Request, res: Response) => {
       supplierId,
       supplierName,
       date,
-      batchNo, // FIX: Added this so it actually gets saved in the purchases document!
-      expDate, // FIX: Added this so it actually gets saved in the purchases document!
+      batchNo, 
+      expDate, 
       remarks,
       items,
       grandTotal,
@@ -38,7 +37,6 @@ export const savePurchase = async (req: Request, res: Response) => {
   }
 };
 
-// 2. Fetch All Purchase Orders
 export const getAllPurchases = async (req: Request, res: Response) => {
   try {
     const snapshot = await adminDb.collection('purchases').orderBy('createdAt', 'desc').get();
@@ -49,25 +47,70 @@ export const getAllPurchases = async (req: Request, res: Response) => {
   }
 };
 
-// 3. Update an Existing Purchase Order
 export const updatePurchase = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const updatedData = req.body;
+    const { id } = req.params; 
+    const { supplierId, supplierName, date, remarks, items, grandTotal, batchNo, expDate } = req.body;
 
-    await adminDb.collection('purchases').doc(id).update(updatedData);
-    res.json({ message: "Purchase Order Updated!" });
+    await adminDb.collection('purchases').doc(id).update({
+      supplierId,
+      supplierName,
+      date,
+      remarks,
+      items,
+      grandTotal,
+      batchNo,
+      expDate,
+      updatedAt: new Date().toISOString()
+    });
+
+    const oldInventorySnapshot = await adminDb.collection('inventory')
+      .where('purchaseId', '==', id)
+      .get();
+
+    const batch = adminDb.batch();
+    oldInventorySnapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit(); 
+
+    for (const item of items) {
+      await adminDb.collection('inventory').add({
+        itemId: item.itemId,
+        productName: item.itemName, 
+        price: item.price,
+        sellingPrice: item.sellingPrice,
+        stockQty: item.qty,
+        batchNo: batchNo,
+        expDate: expDate,
+        purchaseId: id,
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    res.json({ message: "Purchase Order and Inventory synced successfully!" });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// 4. Delete a Purchase Order
 export const deletePurchase = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+
     await adminDb.collection('purchases').doc(id).delete();
-    res.json({ message: "Purchase Order Deleted!" });
+
+    const inventorySnapshot = await adminDb.collection('inventory')
+      .where('purchaseId', '==', id)
+      .get();
+
+    const batch = adminDb.batch();
+    inventorySnapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit(); 
+
+    res.json({ message: "Purchase Order deleted and inventory cleaned up!" });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
