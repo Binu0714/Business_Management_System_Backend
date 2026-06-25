@@ -1,15 +1,16 @@
-import { initializeApp, cert } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-import { readFileSync } from 'fs';
-import path from 'path';
+import { initializeApp, credential, auth, firestore } from 'firebase-admin';
 
-const keyPath = path.resolve(process.cwd(), 'serviceAccountKey.json');
-const serviceAccount = JSON.parse(readFileSync(keyPath, 'utf8'));
+const serviceAccountKeyRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
 
-const app = initializeApp({
-  credential: cert(serviceAccount),
+if (!serviceAccountKeyRaw) {
+  throw new Error("Missing FIREBASE_SERVICE_ACCOUNT environment variable.");
+}
+
+const serviceAccount = JSON.parse(serviceAccountKeyRaw);
+
+initializeApp({
+  credential: credential.cert(serviceAccount),
 });
 
-export const adminAuth = getAuth(app);
-export const adminDb = getFirestore(app);
+export const adminAuth = auth();
+export const adminDb = firestore();
