@@ -28,3 +28,5 @@ app.get('/api/health', (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server on http://localhost:${PORT}`));
+
+export default app;
