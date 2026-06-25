@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { adminDb } from '../config/FirebaseAdmin.js';
+import { adminDb } from '../config/tempAdmin.js';
 import admin from 'firebase-admin';
 
 // 1. Fetch All Inventory Items

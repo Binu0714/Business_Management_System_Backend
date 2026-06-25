@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { adminDb } from '../config/FirebaseAdmin.js';
+import { adminDb } from '../config/tempAdmin.js';
 
 export const addSupplier = async (req: Request, res: Response) => {
   try {

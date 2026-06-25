@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { adminAuth } from '../config/FirebaseAdmin.js';
+import { adminAuth } from '../config/tempAdmin.js';
 
 export const protect = async (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
