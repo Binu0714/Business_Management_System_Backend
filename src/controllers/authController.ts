@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { adminAuth, adminDb } from '../config/tempAdmin.js';
+import { adminAuth, adminDb } from '../config/firebaseAdmin.js';
 import axios from 'axios';
 
 export const signUp = async (req: Request, res: Response) => {
